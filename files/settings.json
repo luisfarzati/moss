@@ -1,0 +1,53 @@
+{
+   "editor.fontFamily": "Fira Code",
+   "editor.fontLigatures": true,
+   "editor.fontSize": 14,
+   "editor.formatOnSave": true,
+   "editor.minimap.enabled": false,
+   "editor.renderLineHighlight": "all",
+   "editor.renderWhitespace": "all",
+   "editor.rulers": [82],
+   "editor.tabSize": 3,
+   "explorer.autoReveal": false,
+   "files.trimTrailingWhitespace": true,
+   "window.title": "${activeEditorMedium}${separator}${rootName}",
+   "window.zoomLevel": 0,
+   "workbench.colorTheme": "One Dark Pro",
+   "workbench.fontAliasing": "auto",
+   "workbench.iconTheme": "vs-seti",
+   "workbench.settings.editor": "json",
+   "workbench.settings.openDefaultSettings": false,
+   "workbench.startupEditor": "newUntitledFile",
+   "prettier.requireConfig": true,
+   "eslint.alwaysShowStatus": true,
+   "debug.toolBarLocation": "docked",
+   "javascript.implicitProjectConfig.checkJs": true,
+   "typescript.updateImportsOnFileMove.enabled": "always",
+   "launch": {
+      "configurations": [
+         {
+            "type": "node",
+            "name": "Run file",
+            "request": "launch",
+            "program": "${file}"
+         },
+         {
+            "type": "node",
+            "name": "Run npm debug",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run-script", "debug"],
+            "port": 9229
+         },
+         {
+            "type": "node",
+            "name": "Run in TDD mode",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run-script", "tdd"],
+            "port": 9229,
+            "internalConsoleOptions": "openOnSessionStart"
+         }
+      ]
+   }
+}

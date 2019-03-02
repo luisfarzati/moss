@@ -1,0 +1,219 @@
+export HOMEBREW_NO_INSTALL_CLEANUP=1
+export HOMEBREW_NO_AUTO_UPDATE=1
+export CI=1
+
+has_element() {
+  local e match="$1"
+  shift
+  for e; do [[ "$e" == "$match" ]] && return 0; done
+  return 1
+}
+
+is_iterm() {
+   if [ "$TERM_PROGRAM" != "iTerm.app" ]; then
+      return 1
+   else
+      return 0
+   fi
+}
+
+logged_exec() {
+   printf_section sh
+   set -x
+   "$@"
+   { set +x; } 2>/dev/null
+}
+
+c_reset() {
+   printf "\033[39m"
+}
+
+in_color() {
+   local reset_code="${3:-"\\033[39m"}"
+   local color_code="$1"
+   if [ "$TERM_PROGRAM" != "iTerm.app" ]; then
+      color_code=""
+      reset_code=""
+   fi
+   printf "${color_code}$2${reset_code}"
+}
+
+in_yellow() {
+   in_color "\033[38;5;226m" "$1"
+}
+
+in_orange() {
+   in_color "\033[38;5;220m" "$1"
+}
+
+in_blue() {
+   in_color "\033[38;5;45m" "$1"
+}
+
+in_cyan() {
+   in_color "\033[38;5;123m" "$1"
+}
+
+in_white() {
+   in_color "\033[38;5;231m" "$1"
+}
+
+in_green() {
+   in_color "\033[38;5;82m" "$1"
+}
+
+in_red() {
+   in_color "\033[38;5;202m" "$1"
+}
+
+in_white2() {
+   in_color "\033[38;5;230m" "$1"
+}
+
+in_bold() {
+   in_color "\033[1m" "$1" "\033[0m"
+}
+
+print_title() {
+   echo
+   echo "——————————————————————————————————————————"
+   echo "• $(in_white $1)"
+   echo "——————————————————————————————————————————"
+}
+
+print_section() {
+   echo "[$(in_blue $1)] ${2-""}"
+}
+
+printf_section() {
+   printf "[$(in_blue $1)] ${2-""}"
+}
+
+print_not_installed() {
+   local package="${2:-$1}"
+   local program="sh"
+   if [ "${2:-""}" != "" ]; then
+      program="$1"
+   fi
+   print_section "$program" "$(in_white "$package") not found, installing now"
+}
+
+print_already_installed() {
+   local package="${2:-$1}"
+   local program="sh"
+   if [ "${2:-""}" != "" ]; then
+      program="$1"
+   fi
+   print_section "$program" "$(in_white "$package") already installed $(in_green ✔)"
+}
+
+print_configured() {
+   print_section defaults "$1 $(in_white "$2") $(in_green ✔)"
+}
+
+brew_install() {
+   if ! brew list "$1" &>/dev/null; then
+      print_not_installed brew "$1" "not found, installing now"
+      logged_exec brew install "$1"
+   else
+      print_already_installed brew "$1"
+   fi
+}
+
+brew_upgrade() {
+   print_section brew "brew upgrade $(in_white "$1")"
+   brew upgrade "$1" 2>/dev/null || return 0
+}
+
+cask_install() {
+   if ! brew cask list "$1" &>/dev/null; then
+      print_not_installed cask "$1" "not found, installing now"
+      logged_exec brew cask install "$1"
+   else
+      print_already_installed cask "$1"
+   fi
+}
+
+git_clone() {
+   if [ ! -d "$2" ]; then
+      print_not_installed git "$1"
+      logged_exec git clone "$1" "$2"
+   else
+      print_already_installed git "$1"
+   fi
+}
+
+ask_for() {
+   local QUESTION=${1:-""}
+   if [ "$QUESTION" != "" ]; then
+      QUESTION="$(in_white "$QUESTION"): "
+   fi
+   local D_VALUE=${2:-""}
+   read -p "$QUESTION[$D_VALUE] " answer
+   case "$answer" in
+      ""    ) echo "$D_VALUE"; break;;
+      *     ) echo "$answer"; break;;
+   esac
+}
+
+prompt_overwrite() {
+   local input_overwrite=""
+   while true; do
+      read -p "$(in_orange "overwrite?") [$(in_white Y)]es [$(in_white N)]o [$(in_white "Ctrl-C")]ancel [Y] " input_overwrite
+      case "$input_overwrite" in
+         ""    ) echo "Y"; break;;
+         [yY]* ) echo "Y"; break;;
+         [nN]* ) echo "N"; break;;
+      esac
+   done
+}
+
+configure_defaults() {
+   local D_DOMAIN=$1
+   local D_KEY=$2
+   local D_VALUE=$3
+   local D_ACTUAL_VALUE=$(defaults read $D_DOMAIN $D_KEY)
+   if [ $D_ACTUAL_VALUE != "" ] && [ $D_ACTUAL_VALUE != $D_VALUE ]; then
+      print_section defaults "$D_DOMAIN $(in_white "$D_KEY")"
+      print_section defaults "$(in_white current): $(in_white2 "$D_ACTUAL_VALUE")"
+      print_section defaults "    $(in_white new): $(in_yellow "$D_VALUE")"
+      local overwrite=$(prompt_overwrite)
+      if [ $overwrite == "N" ]; then
+         return
+      fi
+   fi
+   defaults write $D_DOMAIN $D_KEY "$D_VALUE"
+   print_configured "$D_DOMAIN" "$D_KEY"
+}
+
+link_file() {
+   logged_exec ln -sf "$1" "$2"
+}
+
+write_to_file() {
+   if [ -f "$1" ]; then
+      print_section sh "write file $(in_white "$1")"
+      print_section sh "current: $(in_green  "$(printf "%5s lines" $( cat "$1" | wc -l | awk '{print $1}'))")"
+      print_section sh "    new: $(in_yellow "$(printf "%5s lines" $(echo "$2" | wc -l | awk '{print $1}'))")"
+      local overwrite=$(prompt_overwrite)
+      if [ $overwrite == "N" ]; then
+         return
+      fi
+   fi
+   print_section sh "write file $(in_white "$1")"
+   echo "$2" | sed 's/^   //g' >> "$1"
+}
+
+add_to() {
+   LABEL=$(echo "$2" | sed 2q | sed '/^[[:space:]]*$/d' | sed 's/^      //g')
+   printf "  : adding $LABEL in $1... "
+   if ! grep -q "$LABEL" "$1"; then
+      echo "$2" | sed 's/^      //g' >> "$1"
+      echo "added ✔"
+   else
+      echo "already present ✔"
+   fi
+}
+
+# VAULT_EMAIL="lufohs+1password@gmail.com"
+# VAULT_KEY="A3-4ZK7QN-NS3PRL-E24T6-DFHBS-XZ6A2-CSWQ6"

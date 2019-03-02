@@ -1,0 +1,75 @@
+#!/usr/bin/env sh
+set -euo pipefail
+IFS=$'\n\t'
+
+MOSS_INSTALL_FEATURES=(
+   brew
+   fonts
+   iterm
+   zsh
+   ssh
+   gpg
+   git
+   vim
+   node
+   vscode
+   docker
+   utils
+   apps
+)
+
+is_step_enabled() {
+   return $(has_element $1 "${MOSS_INSTALL_FEATURES[@]}")
+}
+
+source moss
+
+printf "\033[38;5;123m"
+cat banner
+c_reset
+
+# Install Homebrew
+is_step_enabled brew && source install-brew.sh
+
+# Install fonts
+is_step_enabled fonts && source install-fonts.sh
+
+# Install iTerm
+is_step_enabled iterm && source install-iterm.sh
+
+# Continue the installation using iTerm
+if ! is_iterm; then
+   sh run-iterm.sh "cd $(pwd); sh full-install.sh"
+   echo "\nResuming install in iTerm, you can close this window."
+   exit
+fi
+
+# Install zsh
+is_step_enabled zsh && source install-zsh.sh
+
+# Configure ssh
+is_step_enabled ssh && source install-ssh.sh
+
+# Configure gpg
+is_step_enabled gpg && source install-gpg.sh
+
+# Configure git
+is_step_enabled git && source install-git.sh
+
+# Configure vim
+is_step_enabled vim && source install-vim.sh
+
+# Install node
+is_step_enabled node && source install-node.sh
+
+# Install vscode
+is_step_enabled vscode && source install-vscode.sh
+
+# Install docker
+is_step_enabled docker && source install-docker.sh
+
+# Install utils
+is_step_enabled utils && source install-utils.sh
+
+# Install apps
+is_step_enabled apps && source install-apps.sh
